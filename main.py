@@ -13,8 +13,11 @@ class Problem:
     d: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros(0))
     p: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros(0))
     
-    def randomize(self):
-        self.nMachines = np.random.randint(1,10)
+    def randomize(self, nMachines = None):
+        if nMachines is None:
+            self.nMachines = np.random.randint(1,10)
+        else:
+            self.nMachines = nMachines
         self.t = np.random.rand(self.nMachines)
         self.d = np.random.rand(self.nMachines)*self.nMachines/2
         #self.p = np.ones(self.nMachines) 
@@ -58,14 +61,15 @@ class BruteforceSolver:
         schedule0 = list(range(p.nMachines))
         best_schedule = schedule0
         best_value = p.targetfcn(schedule0)
-        max_value = np.sum(p.p)
+        max_possible_value = np.sum([p.p[i] for i in range(p.nMachines) if p.t[i] < p.d[i]])    
+        #max_possible_value = np.sum(p.p)
         for schedule in itertools.permutations(schedule0):
             lschedule = list(schedule)
             cur_value = p.targetfcn(lschedule)
             if cur_value > best_value:
                 best_value = cur_value
                 best_schedule = lschedule
-                if best_value == max_value:
+                if best_value == max_possible_value:
                     break
         self.elapsed += time.time()
         return best_schedule, best_value
@@ -93,12 +97,12 @@ class PulpSolver:
             
         t_finish = 0
         self.M2 = 2*np.max(p.d)
-        self.M = 2*self.M2
+        self.M = 2*(np.sum(p.t) + np.max(p.d))
         self.u = pulp.LpVariable.dicts("u", all_variables, cat = pulp.const.LpBinary)
         for i, j in all_variables:
-                delta_t = self.x[i,j]*p.t[j]
-                deadline = p.d[j]  - self.M2*(1-self.x[i,j])
-                t_finish = t_finish + delta_t
+                duration = self.x[i,j]*p.t[j]
+                deadline = p.d[j] - self.M2*(1-self.x[i,j])
+                t_finish = t_finish + duration
                 self.problem += deadline - t_finish - self.M*self.u[i,j] <= 0
                 self.problem += deadline - t_finish + self.M*(1-self.u[i,j]) >= 0
 
@@ -119,42 +123,43 @@ class PulpSolver:
     def debugPrint(self, p: Problem):
         assert self.x
         assert self.u
-        print("x:")
+        
+        index = [0]*p.nMachines
+        for i in range(p.nMachines):
+            for j in range(p.nMachines):
+                index[i] += int(self.x[i,j].value()*j)
+                                
+        print(f"{'idx':5}| x[i,j]:")
         for i in range(p.nMachines):
             str = ""
-            n = 0
             for j in range(p.nMachines):
                 str += f"{self.x[i,j].value()} "
-                n += self.x[i,j].value()*j
-            print(f"{n}: {str}")
+            print(f"{index[i]:<5}| {str}")
         print()
 
-        print("u2:")
+        print(f"{'idx':5}| u[i]:")
         for i in range(p.nMachines):
             str = ""
-            n = 0
             for j in range(p.nMachines):
                 str += f"{int(self.u[i,j].value())} "
-                n += self.x[i,j].value()*j
-            print(f"{n}: {str}")
+            print(f"{index[i]:<5}| {str}")
         print()
             
-        print("delta_t cur_t deadline u_sum")
+        print(f"{'idx':5}| {'durat':>10} {'cur_t':>10} {'deadline':>10} is_ok")
         cur_t = 0
         for i in range(p.nMachines):
-            delta_t = 0
+            duration = 0
             deadline = 0    
-            n = 0
-            uu = 0
+            is_ok = 0
             for j in range(p.nMachines):
-                delta_t += self.x[i,j].value()*p.t[j]
+                duration += self.x[i,j].value()*p.t[j]
                 deadline += self.x[i,j].value()*p.d[j]
-                n += self.x[i,j].value()*j
-                uu += self.u[i,j].value()
-            cur_t += delta_t
-            print(f"{int(n):3d}: {delta_t:10f} {cur_t:10f} {deadline:10f} ok={int(uu)}")
+                is_ok += int(self.u[i,j].value())
+            cur_t += duration
+            print(f"{index[i]:<5}| {duration:10f} {cur_t:10f} {deadline:10f} ok={is_ok}")
 
-Nsamples = 40
+Nsamples = 10000
+np.random.seed(1)
 seeds = np.random.randint(0, 1000000000, Nsamples)
 bruteforceSolver = BruteforceSolver()
 pulpSolver = PulpSolver()
@@ -171,7 +176,7 @@ for n in range(Nsamples):
     print(f"objective: {true_value}")
 
     schedule, value = pulpSolver.solve(p)
-    #pulpSolver.debugPrint(p)
+    pulpSolver.debugPrint(p)
     assert p.checkSolution(schedule)
     print(f"objective: {p.targetfcn(schedule)}")
     assert np.isclose(value, true_value, 1e-10, 1e-10)
@@ -179,7 +184,12 @@ for n in range(Nsamples):
 print("\n\n")
 
 print("All tests are Ok")        
-print("Total time:")
 print(f"Bruteforce solver time: {bruteforceSolver.elapsed}")
 print(f"PuLP solver time: {pulpSolver.elapsed}")
 #print(sols)
+
+#p = Problem()
+#p.randomize(12)
+#schedule, value = pulpSolver.solve(p)
+#pulpSolver.debugPrint(p)
+
