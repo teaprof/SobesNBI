@@ -14,11 +14,11 @@ class Problem:
     p: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros(0))
         
     # generate random problem
-    def randomize(self, nProduct = None):        
-        if nProduct is None:
+    def randomize(self, nProducts = None):        
+        if nProducts is None:
             self.nProducts = np.random.randint(1,10)
         else:
-            self.nProducts = nProduct
+            self.nProducts = nProducts
         self.t = np.random.rand(self.nProducts)
         self.d = np.random.rand(self.nProducts)*self.nProducts/2
         #self.p = np.ones(self.nProducts) 
@@ -33,6 +33,7 @@ class Problem:
         return str1 + "\n" + str2 + "\n" + str3 + "\n" + str4
     
     # calcualte the reward for the specified schedule
+    # This function is used by brute-force solvers
     def objectiveFcn(self, schedule: list[int]) -> float:
         assert len(schedule) == self.nProducts
         assert len(set(schedule)) == self.nProducts
@@ -46,13 +47,9 @@ class Problem:
         #bonus = np.sum(self.p[schedule]*(tend - self.d[schedule] <= 0))
         #return bonus                
 
-    # check if the solution is valid    
-    def checkSolution(self, schedule: list[int]) -> bool:
-        if len(schedule) != self.nProducts:
-            return False
-        if len(set(schedule)) != self.nProducts:
-            return False
-        return True
+    # check if the schedule is the permutation of numbers from 0 to self.nProducts - 1
+    def checkSchedule(self, schedule: list[int]) -> bool:        
+        return sorted(schedule) == list(range(self.nProducts))
     
     def saveCSV(self, filename):
         res = ""

@@ -22,15 +22,8 @@ COMMENT: "#" /[^\\n]/*
 %ignore COMMENT
 """
 
-filename = "problem.schedlang"
-with open(filename, "r") as f:
-    description = f.read()
-
-parser = lark.Lark(grammar)
-tree = parser.parse(description)
-print(tree)
-
-class Converter(lark.Transformer):
+class DataExtractor(lark.Transformer):
+    """Extract data from AST created by lark parser"""
     def __init__(self) : 
         lark.Transformer.__init__(self)
         self.d = dict()
@@ -41,12 +34,14 @@ class Converter(lark.Transformer):
         self.product_names = []
         
     def before(self, tree):
+        # the name of this method must correspond to the name of grammar rule
         name1 = tree[0].value
         name2 = tree[1].value
         self.before_list.append((name1, name2))
         
         
     def product(self, tree):
+        # the name of this method must correspond to the name of grammar rule
         name = tree[0].value
         self.t[name] = float(tree[1].value)
         self.d[name] = float(tree[2].value)
@@ -55,49 +50,58 @@ class Converter(lark.Transformer):
         
     
     def fine(self, tree):
+        # the name of this method must correspond to the name of grammar rule
         name = tree[0].value
         fine = float(tree[1].value)
         self.f[name] = fine
         
-converter = Converter()
-tt = converter.transform(tree)
-print("\n")
-print(converter.f)
-print(converter.p)
-
-
 class ExtendedProblem(Problem):
     def __init__(self, *args, **kwargs):
         Problem.__init__(self, *args, **kwargs)
         self.befores = []
         self.fines = []
         
+    def randomize(self, nProducts=None):
+        if nProducts is None:
+            self.nProducts = np.random.randint(1,10)
+        else:
+            self.nProducts = nProducts        
+        Problem.randomize(self, self.nProducts)
+        self.fines = np.random.rand(self.nProducts)
+        perm = list(range(self.nProducts))
+        np.random.shuffle(perm)
+        while len(perm) > 1:
+            idx1 = np.random.randint(0, len(perm))
+            idx2 = np.random.randint(0, len(perm))
+            if idx1 > idx2:
+                idx1, idx2 = idx2, idx1
+            self.befores.append((perm[idx1], perm[idx2]))
+            perm = perm[:idx1] + perm[idx1+1:idx2] + perm[idx2+1:]
+        
     @staticmethod
     def initializeByParsedTree(tree):
-        converter = Converter()
-        converter.transform(tree)
-        nProducts = len(converter.d)
+        extractor = DataExtractor()
+        extractor.transform(tree)
+        nProducts = len(extractor.d)
         res = ExtendedProblem(nProducts, np.zeros(nProducts), np.zeros(nProducts), np.zeros(nProducts))
-        for name, t in converter.t.items():
-            n = converter.product_names.index(name)
+        for name, t in extractor.t.items():
+            n = extractor.product_names.index(name)
             res.t[n] = np.asarray(t)
-        for name, d in converter.d.items():
-            n = converter.product_names.index(name)
+        for name, d in extractor.d.items():
+            n = extractor.product_names.index(name)
             res.d[n] = np.asarray(d)
-        for name, p in converter.p.items():
-            n = converter.product_names.index(name)
+        for name, p in extractor.p.items():
+            n = extractor.product_names.index(name)
             res.p[n] = np.asarray(p)
-        for name1, name2 in converter.before_list:
-            n1 = converter.product_names.index(name1)
-            n2 = converter.product_names.index(name2)
+        for name1, name2 in extractor.before_list:
+            n1 = extractor.product_names.index(name1)
+            n2 = extractor.product_names.index(name2)
             res.befores.append((n1, n2))
         res.fines = np.zeros(nProducts)
-        for name, fine in converter.f.items():
-            n = converter.product_names.index(name)
+        for name, fine in extractor.f.items():
+            n = extractor.product_names.index(name)
             res.fines[n] = fine
-        return res
-        
-        
+        return res                
         
     def objectiveFcn(self, schedule: list[int]) -> float:
         assert len(schedule) == self.nProducts
@@ -111,43 +115,47 @@ class ExtendedProblem(Problem):
                 bonus -= self.fines[schedule[n]]
         return bonus
     
-    def checkSolution(self, schedule: list[int]) -> bool:
-        if(not super().checkSolution(schedule)):
+    # This function by the bruteforce solver
+    def checkSchedule(self, schedule: list[int]) -> bool:        
+        if(not super().checkSchedule(schedule)):
             return False
+        # Check before-like constraints
         for n1, n2 in self.befores:
             ord1 = schedule.index(n1)
             ord2 = schedule.index(n2)
             if ord1 > ord2:
                 return False
         return True
-        
-        
-ext_problem = ExtendedProblem.initializeByParsedTree(tree)
-
-
-
+    
 class ExtendedPulpSolver(PulpSolver):
-    def buildPulpProblem(self, p: ExtendedProblem) -> pulp.LpProblem:
-        problem = PulpSolver.buildPulpProblem(self, p)
+    """ Extend PulpSolver class with
+            - additional constraints like "productA should be processed before productB"
+            - fines if the deadline is missed    
+    """
+    
+    def initializePulpProblem(self, p: ExtendedProblem) -> pulp.LpProblem:
+        PulpSolver.initializePulpProblem(self, p)
         befores = pulp.LpVariable.dicts("befores", p.befores)
         for n1, n2 in p.befores:
             n1_ord = pulp.lpSum([self.x[i, n1]*i for i in range(p.nProducts)])
             n2_ord = pulp.lpSum([self.x[i, n2]*i for i in range(p.nProducts)])
-            problem += (n1_ord - n2_ord <= 0.0)
+            self.problem += (n1_ord - n2_ord <= 0.0)
             
         t_finish = 0 # time when current operation is finished
         # declare and initialize v:
         self.v = pulp.LpVariable.dicts("v", self.all_indices, cat = pulp.const.LpBinary)
+        eps = 1
+        M = np.sum(p.t) + eps # total time to finish all tasks
+        M2 = M + np.max(p.d) + eps
         for i, j in self.all_indices:
                 duration = self.x[i,j]*p.t[j]
                 t_finish = t_finish + duration
-                deadline = p.d[j] + self.M2*(1-self.x[i,j])*10 # deadline is big positive number if x[i,j] = 0 (no fine is applied)
-                PulpSolver.addStepFunction(problem, deadline - t_finish, self.v[i,j], self.M2*100)
+                deadline = p.d[j] + M*(1-self.x[i,j]) # if x[i, j] = 0 deadline becomes a big positive number and no fine is applied
+                PulpSolver.addStepFunctionConstrains(self.problem, deadline - t_finish, self.v[i,j], M2)
 
         # objective function is the sum of all rewards
-        problem += pulp.lpSum([self.u[i,j]*p.p[j] for i, j in self.all_indices]) - pulp.lpSum([(1-self.v[i,j])*p.fines[j] for i, j in self.all_indices])
+        self.problem += pulp.lpSum([self.u[i,j]*p.p[j] for i, j in self.all_indices]) - pulp.lpSum([(1-self.v[i,j])*p.fines[j] for i, j in self.all_indices])
         
-        return problem
     
     def debugPrint(self, p: Problem):
         super().debugPrint(p)
@@ -159,21 +167,37 @@ class ExtendedPulpSolver(PulpSolver):
             print(f"{self.schedule[i]:<5}| {str}")
         print()
 
-    
-    
-    
-    
-solver = ExtendedPulpSolver()
-schedule, reward = solver.solve(ext_problem)
-assert ext_problem.checkSolution(schedule)
-print("Schedule (solution):")
-print(schedule)
-print(f"Reward {reward} out of {np.sum(ext_problem.p)}")
+        
 
-bruteforceSolver = BruteforceSolver()
-_, reward0 = bruteforceSolver.solve(ext_problem)
+if __name__ == '__main__':
+    # Read file
+    filename = "problem.schedlang"
+    with open(filename, "r") as f:
+        description = f.read()
 
-print(f"Bruteforce solution reward: {reward0}")
+    # Parse strings and build AST
+    parser = lark.Lark(grammar)
+    tree = parser.parse(description)
+    print(tree)
+        
+    # Create ExtendedProblem
+    ext_problem = ExtendedProblem.initializeByParsedTree(tree)
+    
+    # Create and run solver
+    solver = ExtendedPulpSolver()    
+    schedule, reward = solver.solve(ext_problem)
+    
+    # Check solution
+    assert ext_problem.checkSchedule(schedule)
+    print("Schedule (solution):")
+    print(schedule)
+    print(f"Reward {reward} out of {np.sum(ext_problem.p)}")
 
-assert np.isclose(reward, reward0, 1e-5)
-print("All Ok")
+    # Compare with BruteforceSolver solution
+    bruteforceSolver = BruteforceSolver()
+    _, reward0 = bruteforceSolver.solve(ext_problem)
+
+    print(f"Bruteforce solution reward: {reward0}")
+
+    assert np.isclose(reward, reward0, 1e-5)
+    print("All Ok")

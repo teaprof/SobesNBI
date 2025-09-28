@@ -9,30 +9,30 @@ class PulpSolver:
         self.x = None        
         # u[i, j] is 1 if on the i-th step the j-th product is produced and finished before the deadline, otherwise 0
         self.u = None
-        # some big numbers used to convert Heaviside step functions to linear ones
-        self.M = None
-        self.M2 = None
         # some helper variable
         self.all_indices = None
         #time elapsed
         self.elapsed = 0
         
     @staticmethod
-    def addStepFunction(problem: pulp.LpProblem, x, u, M):
-        """ Add step function conditions 
-                if x >= 0 then u = 1
-                if x < 0 then u = 0         
-            to the problem. This is implemented by means of two additional constraints:
+    def addStepFunctionConstrains(problem: pulp.LpProblem, x: pulp.LpVariable, u: pulp.LpVariable, M: float):
+        """ Add constraints to `problem` such that `u` becomes equal
+        to h(x), where h(x) is a Heaviside step function defined as:
+                h(x) = 1, if x >=0
+                h(x) = 0, otherwise
+        The conditions which makes u equal to h(x) have a form:
                 -(1-u)*M < x <= M*u,
-            where M is some positive constant such that M > sup(abs(x)).
-            Args:
-                u: logical variable
+        where M is some positive constant such that M > sup(abs(x)) + eps.
+        Args:
+            x: the variable which value should be checked
+            u: auxiliary logical variable
+            M: some big constant (see above)
         """
         problem += x - M*u <= 0
         problem += x + M*(1-u) >= 0
         
         
-    def buildPulpProblem(self, p: Problem) -> pulp.LpProblem:
+    def initializePulpProblem(self, p: Problem):
         """ converts `p` to pulp problem.
         This method can be redefined in derived classes to add extra constrains
         
@@ -42,7 +42,7 @@ class PulpSolver:
         Returns:
             pulp.LpProblem:
         """
-        problem = pulp.LpProblem("Scheduler problem", pulp.LpMaximize)
+        self.problem = pulp.LpProblem("Scheduler problem", pulp.LpMaximize)
         
         # encode the schedule with bit matrix x[i, j]
         # i - the number of step in the schedule, j - the number of product
@@ -51,8 +51,8 @@ class PulpSolver:
         
         # each row and each column should have exactlty one `1`
         for i in range(p.nProducts):
-                problem += pulp.lpSum([self.x[i,j] for j in range(p.nProducts)]) == 1
-                problem += pulp.lpSum([self.x[j,i] for j in range(p.nProducts)]) == 1
+                self.problem += pulp.lpSum([self.x[i,j] for j in range(p.nProducts)]) == 1
+                self.problem += pulp.lpSum([self.x[j,i] for j in range(p.nProducts)]) == 1
                 
         
         # Define matrix `u` which encodes which rewards are obtained for specified schedule x:
@@ -60,38 +60,35 @@ class PulpSolver:
         # where step(x) is Heaviside step function.
            
         t_finish = 0 # time when current operation is finished
-        # some magic formulas, we can't write here arbitrary big values because it can lead 
-        # to a loss of precision (ints becomes fractionals)
-        self.M2 = 2*np.max(p.d)
-        self.M = 2*(np.sum(p.t) + np.max(p.d))
+        # We can't write here arbitrary big values because this leads to a loss of precision (ints becomes fractionals),
+        # so we estimate supremums and add eps
+        eps = 0.1
+        M2 = np.max(p.d) + eps
+        M = (np.sum(p.t) + np.max(p.d)) + eps
         # declare and initialize u
         self.u = pulp.LpVariable.dicts("u", self.all_indices, cat = pulp.const.LpBinary)
         for i, j in self.all_indices:
                 duration = self.x[i,j]*p.t[j]
                 t_finish = t_finish + duration
-                deadline = p.d[j] - self.M2*(1-self.x[i,j]) # deadline is negative is x[i,j] = 0 (=> reward is missed)
-                #problem += deadline - t_finish - self.M*self.u[i,j] <= 0
-                #problem += deadline - t_finish + self.M*(1-self.u[i,j]) >= 0
-                PulpSolver.addStepFunction(problem, deadline - t_finish, self.u[i,j], self.M)
+                deadline = p.d[j] - M2*(1-self.x[i,j]) # deadline is negative is x[i,j] = 0 (=> reward is missed)
+                PulpSolver.addStepFunctionConstrains(self.problem, deadline - t_finish, self.u[i,j], M)
 
         # objective function is the sum of all rewards
-        problem += pulp.lpSum([self.u[i,j]*p.p[j] for i, j in self.all_indices])    
-        return problem
+        self.problem += pulp.lpSum([self.u[i,j]*p.p[j] for i, j in self.all_indices])    
 
-        
     
     def solve(self, p: Problem) -> tuple[list[int], float]:
-        """ solve problem `p` using pulp mixed integer linear solver.
+        """ solve problem `p` using the pulp-based mixed integer linear solver.
         
         Args:
             p: problem
 
         Returns:
-            tuple[list[int], float]: schedule and the reached reward (max value of the objective function)
+            tuple[list[int], float]: optimal schedule and the corresponding reward
         """
         
-        # build problem (convert `problem` to pulp.lpProblem)
-        self.problem = self.buildPulpProblem(p)
+        # convert `problem` to pulp.lpProblem
+        self.initializePulpProblem(p)
         
         # solve, round and accumulate time elapsed
         self.problem.solve()
@@ -113,7 +110,7 @@ class PulpSolver:
         return schedule, reward
             
     def debugPrint(self, p: Problem):
-        """ pretty printing some debug information
+        """ pretty print some debug information
 
         Args:
             p: problem
