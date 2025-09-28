@@ -1,6 +1,6 @@
 # SobesNBI
 
-The solution of some integer optimization problem described [here](Цифровой планировщик.pdf).
+The solution of some integer optimization problem described [here](Цифровой%20планировщик.pdf).
 
 # Files
 
