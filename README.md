@@ -13,9 +13,24 @@ The solution of some integer optimization problem described [here](Цифров�
 * problem.py - problem description 
 * problem.schedlang - sample problem written on DSL (domain specific language)
 * README.md - this file
+* requirements.txt - requirements file for `pip install`
 * solver.py - solver
 * test_solver.py - manually written tests for solver
 * Цифровой планировщик.pdf - the original problem solved in this project
+
+
+# Install the dependencies
+
+1. Create the virtual environment.
+2. Activate it
+3. Install requirements from `requirements.txt`
+
+The following code do the things mentioned above:
+```
+python3 -m venv .env
+source .env/bin/activate
+pip install -r requirements.txt
+```
 
 
 # How to run

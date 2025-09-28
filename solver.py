@@ -65,6 +65,8 @@ class PulpSolver:
         eps = 0.1
         M2 = np.max(p.d) + eps
         M = (np.sum(p.t) + np.max(p.d)) + eps
+        M *= 1000
+        M2 *= 1000
         # declare and initialize u
         self.u = pulp.LpVariable.dicts("u", self.all_indices, cat = pulp.const.LpBinary)
         for i, j in self.all_indices:
@@ -91,7 +93,8 @@ class PulpSolver:
         self.initializePulpProblem(p)
         
         # solve, round and accumulate time elapsed
-        self.problem.solve()
+        solver = pulp.getSolver('GUROBI')        
+        self.problem.solve(solver)
         self.problem.roundSolution()
         self.elapsed += self.problem.solutionTime
         
