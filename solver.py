@@ -81,7 +81,7 @@ class PulpSolver:
         
     
     def solve(self, p: Problem) -> tuple[list[int], float]:
-        """ solve problem `p` using pulp library.
+        """ solve problem `p` using pulp mixed integer linear solver.
         
         Args:
             p: problem

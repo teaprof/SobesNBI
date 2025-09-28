@@ -19,7 +19,7 @@ class BruteforceSolver:
         
         # calculate the max possible value of the total reward, this is
         # used to stop the bruteforce loop if this values is reached
-        max_possible_value = np.sum([p.p[i] for i in range(p.nProducts) if p.t[i] < p.d[i]])            
+        max_possible_value = np.sum([p.p[i] for i in range(p.nProducts) if p.t[i] < p.d[i]])
         
         # main loop - enumerate all possible schedules        
         for schedule in itertools.permutations(schedule0):
