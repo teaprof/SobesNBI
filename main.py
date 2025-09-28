@@ -4,8 +4,9 @@ import numpy as np
 
 input_filename = 'problem.csv'
 
-if __name__ == '__main__':
-    problem = Problem()
+if __name__ == '__main__':    
+    problem = Problem() 
+    np.random.seed(1) # for debug purposes
     problem.randomize(9)
     problem.saveCSV(input_filename)
     

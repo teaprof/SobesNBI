@@ -23,6 +23,8 @@ class BruteforceSolver:
         
         # main loop - enumerate all possible schedules        
         for schedule in itertools.permutations(schedule0):
+            if not p.checkSolution(schedule):
+                continue
             sched_as_list = list(schedule)
             cur_reward = p.objectiveFcn(sched_as_list)
             if cur_reward > best_reward:
