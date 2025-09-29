@@ -140,17 +140,17 @@ fine for prod5 is 10
 * Rows `v[:,j]` encode if `j`-th product is finished after the deadline has expired and a fine is applied.
 
 Variables `u` and `v` can be expressed as step-functions:
+
 $`
 \begin{align}
     u_{i,j} &= x_{i,j}*h(d_j - \tau_i), \\
     v_{i,j} &= x_{i,j}*h(\tau_i - d_j)
 \end{align}
 `$
+
 where $d_j$ is a deadline for $j$-th product, $\tau_i$ is time when $i$-th step of the schedule will be completed. It is calculated using as following:
 
-$`
-\tau_i = \sum\limits_{k=0}^{i}\sum\limits_{j=0}^{n-1} x_{i,j}t_j,
-`$
+$`{\tau_i = \sum\limits_{k=0}^{i}\sum\limits_{j=0}^{n-1} {x_{i,j}t_j,}}`$
 
 where $n$ is the number of products, $t_j$ is time required to process product $i$. The next subsection explains how to implement the step function.
 
@@ -158,21 +158,27 @@ where $n$ is the number of products, $t_j$ is time required to process product $
 
 If the objective function involves calculation of the Heaviside step function 
 
-$h(\xi) =
+$`
+h(\xi) =
 \begin{cases}
     1, \textrm{if }\xi\geq 0\\
     0, \textrm{otherwise}.
-\end{cases}$
+\end{cases}
+`$
 
 it becomes non-linear. Since mixed integer programming works only with linear function,
 we need to transform the original non-linear problem to linear one. This can be done in the following way.
 
-Let the objective function is defined as $`f = \sum\limits_{i}^{n} h(\xi_i) p_i`$, where $\xi_i$ are some variables and $p_i$ are some constant. We define the new variables
+Let the objective function is defined as 
+
+$`f = \sum\limits_{i}^{n} h(\xi_i) p_i`$, 
+
+where $\xi_i$ are some variables and $p_i$ are some constant. We define the new variables
 $u_i = h(\xi_i)$ and add two constraints per each new variable:
 
-$ -M(1-u_i) \leq \xi_i < Mu_i$
+$` -M(1-u_i) \leq \xi_i < Mu_i`$
 
-The constant should satisfy the inequality: $M >= \sup|\xi_i|$. These constraints are satisfied if and only if $u_i = h(\xi_i)$ holds. Indeed, if $x \geq 0$ the right-hand side plays, if $x < 0$ the left-hand side plays.
+The constant should satisfy the inequality: $M > \sup|\xi_i| + \varepsilon$, where $\varepsilon$ is some small positive number. These constraints are satisfied if and only if $u_i = h(\xi_i)$ holds. Indeed, if $x \geq 0$ the right-hand side plays, if $x < 0$ the left-hand side plays.
 
 ## How to choose value for M
 
