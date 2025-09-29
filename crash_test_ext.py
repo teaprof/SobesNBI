@@ -1,5 +1,5 @@
 # Compares the extended pulp solver solutions with solutions from bruteforce solver
-from extended import ExtendedProblem, ExtendedPulpSolver
+from main_ext import ExtendedProblem, ExtendedPulpSolver
 from crash_test import BruteforceSolver
 import numpy as np       
             

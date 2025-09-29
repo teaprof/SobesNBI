@@ -4,20 +4,25 @@ The solution of some integer optimization problem described [here](Цифров�
 
 # Files
 
-* crash_test.py - crash test (very long)
-* extended_crash_test.py - crash test for extended problem solver
-* extended.py - extensions (part 2 of the task)
+The main files are:
+* crash_test.py - crash test
 * LICENSE - MIT license
 * main.py - main script
 * problem.csv - sample problem
 * problem.py - problem description 
-* problem.schedlang - sample problem written on DSL (domain specific language)
 * README.md - this file
 * requirements.txt - requirements file for `pip install`
 * solver.py - solver
 * test_solver.py - manually written tests for solver
 * Цифровой планировщик.pdf - the original problem solved in this project
 
+The following files relate to 2nd part of task:
+* crash_test_ext.py - crash test for extended problem solver
+* grammar_parser.py - the parser for domain specific language describing the problem (for part 2 of the task)
+* main_ext.py - main script for part 2 of the task
+* problem_ext.py - extended problem description  (for part 2 of the task)
+* problem.schedlang - sample problem written on DSL (domain specific language)
+* solver_ext.py - solver for extended problem
 
 # Install the dependencies
 
@@ -87,17 +92,17 @@ python3 crash_test.py
 
 # Extensions
 
-The extensions corresponds to the part 2 of the original task (see `Цифровой планировщик.pdf`). They are represented in `extended.py`. This file contains `ExtendedProblem` and `ExtendedPulpSolver` classes which extends `Problem` and `PulpSolver` classes with constraints of a new type and fines. The constraint of the new type requires that some product should be processed before another one. The fines are subtracted from the total reward if the product is got ready after the deadline has expired.
+The extensions corresponds to the part 2 of the original task (see `Цифровой планировщик.pdf`). They are represented in files `problem_ext.py`, `solver_ext.py`, `grammar_parser.py`. These file contains `ExtendedProblem` and `ExtendedPulpSolver` classes which extends `Problem` and `PulpSolver` classes with constraints of a new type and fines. The constraint of the new type requires that some product should be processed before another one. The fines are subtracted from the total reward if the product is got ready after the deadline has expired.
 
 This module also includes parser for Backus-Naur form domain-specific language (BNF DSL) that is suited to describe problems with extended constraints and fines.
 
 To run extended module, print
 ```
-python3 extended.py
+python3 main_ext.py
 ```
 To run crash test, print
 ```
-python3 extended_crash_test.py
+python3 crash_test_ext.py
 ```
 
 It will read and parse `problem.schedlang` file, run extended pulp-based solver and compare the solution with brute force solution.
