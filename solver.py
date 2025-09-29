@@ -91,7 +91,8 @@ class PulpSolver:
         self.initializePulpProblem(p)
         
         # solve, round and accumulate time elapsed
-        solver = pulp.getSolver('GUROBI')        
+        solver = pulp.getSolver('GUROBI')
+        #solver = None # default solver
         self.problem.solve(solver)
         self.problem.roundSolution()
         self.elapsed += self.problem.solutionTime

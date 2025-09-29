@@ -186,7 +186,9 @@ M can have any value greater than $\sup|\xi_i|$. But if we take some value like 
 
 ## Why GUROBI solver is used instead of default one
 
-It seems that default CBC solver installed by PuPL installer is broken. 
+It seems that default CBC solver v. 2.10.3 installed by the latest at this moment PuPL v.3.3.0 installer is broken. The CBC solvers 2.10.6 and above up to 2.10.12 are OK. To update solver manually download the binary for CBC solver and update file `.env/lib/python3.12/site-packages/pulp/solverdir/cbc/linux/i64/cbc` with it.
+
+In this project, we simply switch the CBC solver to GUROBI.
 
 
 
