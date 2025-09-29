@@ -92,9 +92,9 @@ python3 crash_test.py
 
 # Extensions
 
-The extensions corresponds to the part 2 of the original task (see `Цифровой планировщик.pdf`). They are represented in files `problem_ext.py`, `solver_ext.py`, `grammar_parser.py`. These file contains `ExtendedProblem` and `ExtendedPulpSolver` classes which extends `Problem` and `PulpSolver` classes with constraints of a new type and fines. The constraint of the new type requires that some product should be processed before another one. The fines are subtracted from the total reward if the product is got ready after the deadline has expired.
+The extensions corresponds to the part 2 of the original task (see `Цифровой планировщик.pdf`). They are represented in files with `ext` suffix. These file contains `ExtendedProblem` and `ExtendedPulpSolver` classes which extends `Problem` and `PulpSolver` classes with constraints of a new type and fines. The constraint of the new type requires that some product should be processed before another one. The fines are subtracted from the total reward if the product is got ready after the deadline has expired.
 
-This module also includes parser for Backus-Naur form domain-specific language (BNF DSL) that is suited to describe problems with extended constraints and fines.
+This module also includes parser for Backus-Naur form domain-specific language (BNF DSL) that is suited to describe problems with extended constraints and fines. The parser is represented by class `GrammarParser` in `grammar_parser.py`.
 
 To run extended module, print
 ```
