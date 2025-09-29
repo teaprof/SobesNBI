@@ -65,8 +65,6 @@ class PulpSolver:
         eps = 0.1
         M2 = np.max(p.d) + eps
         M = (np.sum(p.t) + np.max(p.d)) + eps
-        M *= 1000
-        M2 *= 1000
         # declare and initialize u
         self.u = pulp.LpVariable.dicts("u", self.all_indices, cat = pulp.const.LpBinary)
         for i, j in self.all_indices:

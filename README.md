@@ -131,3 +131,60 @@ fine for prod2 is 1
 fine for prod5 is 10
 ```
 
+# Developers notes
+
+## What variables are used
+
+* logical variables `x[i,j]` encodes the schedule, if `x[i,j]` = 1 then the product `j` is placed on the `i`-th step in the schedule. Constrains: each row and each column of array `x` should have only one non-zero element.
+* Rows `u[:,j]` encode if `j`-th product is finished before the deadline. If it is so, `u[i,j]` = 1, where `i` is the column number for which `x[i,j]` = 1. 
+* Rows `v[:,j]` encode if `j`-th product is finished after the deadline has expired and a fine is applied.
+
+Variables `u` and `v` can be expressed as step-functions:
+$`
+\begin{align}
+    u_{i,j} &= x_{i,j}*h(d_j - \tau_i), \\
+    v_{i,j} &= x_{i,j}*h(\tau_i - d_j)
+\end{align}
+`$
+where $d_j$ is a deadline for $j$-th product, $\tau_i$ is time when $i$-th step of the schedule will be completed. It is calculated using as following:
+
+$`
+\tau_i = \sum\limits_{k=0}^{i}\sum\limits_{j=0}^{n-1} x_{i,j}t_j,
+`$
+
+where $n$ is the number of products, $t_j$ is time required to process product $i$. The next subsection explains how to implement the step function.
+
+## How to implement Heaviside function if solver can solve only linear problem
+
+If the objective function involves calculation of the Heaviside step function 
+
+$h(\xi) =
+\begin{cases}
+    1, \textrm{if }\xi\geq 0\\
+    0, \textrm{otherwise}.
+\end{cases}$
+
+it becomes non-linear. Since mixed integer programming works only with linear function,
+we need to transform the original non-linear problem to linear one. This can be done in the following way.
+
+Let the objective function is defined as $`f = \sum\limits_{i}^{n} h(\xi_i) p_i`$, where $\xi_i$ are some variables and $p_i$ are some constant. We define the new variables
+$u_i = h(\xi_i)$ and add two constraints per each new variable:
+
+$ -M(1-u_i) \leq \xi_i < Mu_i$
+
+The constant should satisfy the inequality: $M >= \sup|\xi_i|$. These constraints are satisfied if and only if $u_i = h(\xi_i)$ holds. Indeed, if $x \geq 0$ the right-hand side plays, if $x < 0$ the left-hand side plays.
+
+## How to choose value for M
+
+M can have any value greater than $\sup|\xi_i|$. But if we take some value like 1e+10 the solver will produce invalid results: the logical variables `x[i,j]` becomes fractional. I assume that this is due to truncated precision of floating point values when the they are passed to the selected backend solver in the text format. The values are truncated to 13 digits (see  `mps`-files written by PuLP in `/tmp/` folder on your computer). This can be fixed (16 digits output will give max precision) but this problem will arise again due to the limited precision of doubles itself. So, in this project a special attention was paid to the values of `M` (estimation of $sup|\xi_i|$).
+
+## Why GUROBI solver is used instead of default one
+
+It seems that default CBC solver installed by PuPL installer is broken. 
+
+
+
+
+
+
+
