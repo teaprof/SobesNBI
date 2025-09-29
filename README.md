@@ -5,7 +5,7 @@ The solution of some integer optimization problem described [here](Цифров�
 # Files
 
 * crash_test.py - crash test (very long)
-* extended_crashtest.py - crash test for extended problem solver
+* extended_crash_test.py - crash test for extended problem solver
 * extended.py - extensions (part 2 of the task)
 * LICENSE - MIT license
 * main.py - main script
@@ -97,7 +97,7 @@ python3 extended.py
 ```
 To run crash test, print
 ```
-python3 extended_crashtest.py
+python3 extended_crash_test.py
 ```
 
 It will read and parse `problem.schedlang` file, run extended pulp-based solver and compare the solution with brute force solution.
