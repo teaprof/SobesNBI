@@ -153,7 +153,7 @@ $`
 \end{align}
 `$
 
-where $d_j$ is a deadline for $j$-th product, $\tau_i$ is time when $i$-th step of the schedule will be completed. It is calculated using as following:
+where $d_j$ is a deadline for $j$-th product, $\tau_i$ is time when $i$-th step of the schedule will be completed. It is calculated as follows
 
 $`{\tau_i = \sum\limits_{k=0}^{i}\sum\limits_{j=0}^{n-1} {x_{i,j}t_j,}}`$
 
